@@ -17,6 +17,8 @@
     .form-group { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
     .form-group p { margin: 0 0 10px 0; font-weight: bold; font-size: 14px; color: #333; }
     .radio-label { display: block; font-size: 13px; margin-bottom: 8px; cursor: pointer; color: #555; }
+    .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; }
+    .checkbox-label { font-size: 13px; color: #555; display: flex; align-items: center; width: 45%; }
     select, input[type="file"] { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc; }
     #result-badge { display: inline-block; padding: 5px 10px; border-radius: 12px; font-size: 14px; font-weight: bold; margin-top: 10px; color: white; }
     .bg-good { background-color: #28a745; }
@@ -64,10 +66,36 @@
       </div>
 
       <div class="form-group">
-        <p>쓰레기가 보이는 범위</p>
+        <p>1. 쓰레기가 보이는 범위</p>
         <label class="radio-label"><input type="radio" name="range" value="0" checked> 보이지 않음 (0점)</label>
         <label class="radio-label"><input type="radio" name="range" value="1"> 일부 구간에서 보임 (1점)</label>
         <label class="radio-label"><input type="radio" name="range" value="2"> 전반에서 보임 (2점)</label>
+      </div>
+
+      <div class="form-group">
+        <p>2. 쓰레기 밀집 정도</p>
+        <label class="radio-label"><input type="radio" name="density" value="0" checked> 거의 없음 (0점)</label>
+        <label class="radio-label"><input type="radio" name="density" value="1"> 산발적으로 존재 (1점)</label>
+        <label class="radio-label"><input type="radio" name="density" value="2"> 한두 곳에 밀집 (2점)</label>
+        <label class="radio-label"><input type="radio" name="density" value="3"> 여러 곳에 밀집 (3점)</label>
+      </div>
+
+      <div class="form-group">
+        <p>3. 사진 밖 주변 쓰레기 여부</p>
+        <label class="radio-label"><input type="radio" name="outside" value="0" checked> 없음 (0점)</label>
+        <label class="radio-label"><input type="radio" name="outside" value="1"> 있음 (1점)</label>
+      </div>
+
+      <div class="form-group">
+        <p>4. 발견된 쓰레기 종류 (복수선택)</p>
+        <div class="checkbox-group">
+          <label class="checkbox-label"><input type="checkbox" value="플라스틱/비닐"> 플라스틱/비닐</label>
+          <label class="checkbox-label"><input type="checkbox" value="스티로폼/부표"> 스티로폼/부표</label>
+          <label class="checkbox-label"><input type="checkbox" value="폐어구/그물/밧줄"> 폐어구/그물</label>
+          <label class="checkbox-label"><input type="checkbox" value="유리/캔"> 유리/캔</label>
+          <label class="checkbox-label"><input type="checkbox" value="목재/대형폐기물"> 대형폐기물</label>
+          <label class="checkbox-label"><input type="checkbox" value="기타"> 기타</label>
+        </div>
       </div>
       
       <div class="form-group" style="background: #e3f2fd; text-align: center;">
@@ -89,21 +117,20 @@
   </div>
 
   <script>
-    /* ✅ 본인의 파이어베이스 정보로 꼭 수정하세요! */
+    /* 본인의 파이어베이스 Config 입력 */
     const firebaseConfig = {
-  apiKey: "AIzaSyBir23HnIvMiP7GYXRAKqk0dWtt0hMSgD4",
-  authDomain: "flogging-31ab2.firebaseapp.com",
-  databaseURL: "https://flogging-31ab2-default-rtdb.firebaseio.com",
-  projectId: "flogging-31ab2",
-  storageBucket: "flogging-31ab2.firebasestorage.app",
-  messagingSenderId: "359921142868",
-  appId: "1:359921142868:web:f4f96470b5c2e87ddbb1c1",
-  measurementId: "G-XS7T52VWJ4"
-};
-
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "SENDER_ID",
+      appId: "APP_ID"
+    };
     
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const noPhoto = "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect width='150' height='150' fill='%23eee'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='14' fill='%23555'%3E대기중%3C/text%3E%3C/svg%3E";
     let currentPhotoBase64 = null;
 
     function showScreen(screenId) {
@@ -111,14 +138,21 @@
       document.getElementById(screenId).classList.add('active');
     }
 
-    const radios = document.querySelectorAll('input[type="radio"]');
-    radios.forEach(radio => radio.addEventListener('change', () => {
-      const score = parseInt(document.querySelector('input[name="range"]:checked').value);
-      document.getElementById('total-score').innerText = score + '점';
+    function calculateScore() {
+      const r = parseInt(document.querySelector('input[name="range"]:checked').value);
+      const d = parseInt(document.querySelector('input[name="density"]:checked').value);
+      const o = parseInt(document.querySelector('input[name="outside"]:checked').value);
+      const total = r + d + o;
+      
+      document.getElementById('total-score').innerText = total + '점';
       const badge = document.getElementById('result-badge');
-      if (score <= 1) { badge.innerText = '양호'; badge.className = 'bg-good'; }
+      if (total <= 1) { badge.innerText = '양호'; badge.className = 'bg-good'; }
+      else if (total <= 3) { badge.innerText = '수거 권장'; badge.className = 'bg-normal'; }
       else { badge.innerText = '집중수거'; badge.className = 'bg-danger'; }
-    }));
+      return total;
+    }
+
+    document.querySelectorAll('#morning-check-screen input[type="radio"]').forEach(r => r.addEventListener('change', calculateScore));
 
     document.getElementById('morning-photo').addEventListener('change', function(e) {
       const file = e.target.files[0];
@@ -141,10 +175,9 @@
     });
 
     function submitMorningCheck() {
-      if (!currentPhotoBase64) { alert('사진이 아직 로딩되지 않았거나 등록되지 않았습니다.'); return; }
-      
+      if (!currentPhotoBase64) { alert('사진 등록이 완료될 때까지 잠시만 기다려주세요.'); return; }
       const loc = document.getElementById('location-select').value;
-      const score = parseInt(document.querySelector('input[name="range"]:checked').value);
+      const score = calculateScore();
       
       db.ref('locations/' + loc).update({ score: score, adminPhoto: currentPhotoBase64 })
         .then(() => {
@@ -165,11 +198,10 @@
           if (info.status === 'pending') {
             pendingCount++;
             const photos = info.photos || {};
-            
-            const p1 = photos.startSelfie || 'https://via.placeholder.com/150';
-            const p2 = photos.startLocation || 'https://via.placeholder.com/150';
-            const p3 = photos.endSelfie || 'https://via.placeholder.com/150';
-            const p4 = photos.endLocation || 'https://via.placeholder.com/150';
+            const p1 = photos.startSelfie || noPhoto;
+            const p2 = photos.startLocation || noPhoto;
+            const p3 = photos.endSelfie || noPhoto;
+            const p4 = photos.endLocation || noPhoto;
 
             const card = document.createElement('div');
             card.className = 'review-card';
@@ -199,7 +231,6 @@
         db.ref('locations/' + loc).update({ approvedUserPhoto: photo });
       }
     }
-
     function rejectActivity(id) {
       if(confirm('반려 처리하시겠습니까?')) {
         db.ref('pending_approvals/' + id).update({ status: 'rejected' });
