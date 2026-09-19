@@ -15,6 +15,7 @@
     .danger-btn { background: #dc3545; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 48%; }
     .outline-btn { background: white; color: #555; border: 1px solid #ccc; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 10px; }
     .form-group { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+    .form-group input[type="password"] { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
     .form-group p { margin: 0 0 10px 0; font-weight: bold; font-size: 14px; color: #333; }
     .radio-label { display: block; font-size: 13px; margin-bottom: 8px; cursor: pointer; color: #555; }
     .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -31,18 +32,28 @@
     .photo-wrapper img { width: 100%; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #ccc; background: #eee; }
     .photo-wrapper span { font-size: 11px; color: #555; font-weight: bold; }
     .review-actions { display: flex; justify-content: space-between; }
-    #empty-msg { text-align: center; color: #888; font-size: 14px; margin-top: 50px; }
+    .empty-msg { text-align: center; color: #888; font-size: 14px; margin-top: 50px; }
   </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 </head>
 <body>
 
   <div id="app-container">
-    <div id="main-screen" class="screen active">
+    <div id="login-screen" class="screen active">
+      <h2 style="margin-top: 50px;">관리자 로그인 🔐</h2>
+      <div class="form-group">
+        <input type="password" id="admin-pw" placeholder="관리자 비밀번호 입력">
+      </div>
+      <button class="primary-btn" onclick="adminLogin()">로그인</button>
+    </div>
+
+    <div id="main-screen" class="screen">
       <h2>우도 지킴이 관리자 🌊</h2>
       <button class="primary-btn" onclick="showScreen('morning-check-screen')">🌅 아침 해변 상태 체크</button>
       <button class="primary-btn" style="background: #17a2b8;" onclick="showScreen('verify-screen')">✅ 서포터즈 활동 공인하기</button>
+      <button class="outline-btn" onclick="showScreen('history-screen')">📂 처리 내역 조회</button>
     </div>
 
     <div id="morning-check-screen" class="screen">
@@ -86,18 +97,6 @@
         <label class="radio-label"><input type="radio" name="outside" value="1"> 있음 (1점)</label>
       </div>
 
-      <div class="form-group">
-        <p>4. 발견된 쓰레기 종류 (복수선택)</p>
-        <div class="checkbox-group">
-          <label class="checkbox-label"><input type="checkbox" value="플라스틱/비닐"> 플라스틱/비닐</label>
-          <label class="checkbox-label"><input type="checkbox" value="스티로폼/부표"> 스티로폼/부표</label>
-          <label class="checkbox-label"><input type="checkbox" value="폐어구/그물/밧줄"> 폐어구/그물</label>
-          <label class="checkbox-label"><input type="checkbox" value="유리/캔"> 유리/캔</label>
-          <label class="checkbox-label"><input type="checkbox" value="목재/대형폐기물"> 대형폐기물</label>
-          <label class="checkbox-label"><input type="checkbox" value="기타"> 기타</label>
-        </div>
-      </div>
-      
       <div class="form-group" style="background: #e3f2fd; text-align: center;">
         <p>자동 산출 결과</p>
         <h3 id="total-score" style="margin: 0; color: #1976d2;">0점</h3>
@@ -111,7 +110,14 @@
     <div id="verify-screen" class="screen">
       <h2>서포터즈 활동 공인</h2>
       <div id="review-list"></div>
-      <p id="empty-msg">대기 중인 요청이 없습니다.</p>
+      <p id="empty-msg" class="empty-msg">대기 중인 요청이 없습니다.</p>
+      <button class="outline-btn" onclick="showScreen('main-screen')" style="margin-top: auto;">뒤로 가기</button>
+    </div>
+
+    <div id="history-screen" class="screen">
+      <h2>처리 내역 조회</h2>
+      <div id="history-list"></div>
+      <p id="history-empty-msg" class="empty-msg">처리 내역이 없습니다.</p>
       <button class="outline-btn" onclick="showScreen('main-screen')" style="margin-top: auto;">뒤로 가기</button>
     </div>
   </div>
@@ -132,12 +138,22 @@
     
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const storage = firebase.storage();
     const noPhoto = "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect width='150' height='150' fill='%23eee'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='14' fill='%23555'%3E대기중%3C/text%3E%3C/svg%3E";
     let currentPhotoBase64 = null;
 
     function showScreen(screenId) {
       document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
       document.getElementById(screenId).classList.add('active');
+    }
+
+    function adminLogin() {
+      // 데모용 단순 비밀번호 확인
+      if(document.getElementById('admin-pw').value === '1234') { 
+        showScreen('main-screen');
+      } else {
+        alert('비밀번호가 일치하지 않습니다.');
+      }
     }
 
     function calculateScore() {
@@ -176,63 +192,93 @@
       reader.readAsDataURL(file);
     });
 
-    function submitMorningCheck() {
-      if (!currentPhotoBase64) { alert('사진 등록이 완료될 때까지 잠시만 기다려주세요.'); return; }
-      const loc = document.getElementById('location-select').value;
-      const score = calculateScore();
+    async function submitMorningCheck() {
+      if (!currentPhotoBase64) { alert('사진을 먼저 등록해주세요.'); return; }
       
-      db.ref('locations/' + loc).update({ score: score, adminPhoto: currentPhotoBase64 })
-        .then(() => {
-          alert("✅ 즉시 사용자 앱에 반영되었습니다.");
-          currentPhotoBase64 = null;
-          showScreen('main-screen');
-        });
+      const btn = document.getElementById('submit-check-btn');
+      btn.innerText = "업로드 중..."; btn.disabled = true;
+
+      try {
+        const ref = storage.ref(`morning_checks/${Date.now()}.jpg`);
+        await ref.putString(currentPhotoBase64, 'data_url');
+        const photoUrl = await ref.getDownloadURL();
+
+        const loc = document.getElementById('location-select').value;
+        const score = calculateScore();
+        
+        await db.ref('locations/' + loc).update({ score: score, adminPhoto: photoUrl });
+        alert("✅ 즉시 사용자 앱에 반영되었습니다.");
+        currentPhotoBase64 = null;
+        btn.innerText = "점검 완료 및 앱에 반영"; btn.disabled = false;
+        showScreen('main-screen');
+      } catch(e) {
+        alert("업로드 실패: " + e.message);
+        btn.innerText = "점검 완료 및 앱에 반영"; btn.disabled = false;
+      }
     }
 
     db.ref('pending_approvals').on('value', (snapshot) => {
       const listContainer = document.getElementById('review-list');
-      const emptyMsg = document.getElementById('empty-msg');
-      listContainer.innerHTML = '';
+      const historyContainer = document.getElementById('history-list');
       
-      let pendingCount = 0;
+      listContainer.innerHTML = ''; historyContainer.innerHTML = '';
+      let pendingCount = 0; let historyCount = 0;
+
       if(snapshot.val()) {
         for (const [id, info] of Object.entries(snapshot.val())) {
+          const photos = info.photos || {};
+          const p1 = photos.startSelfie || noPhoto;
+          const p2 = photos.startLocation || noPhoto;
+          const p3 = photos.endSelfie || noPhoto;
+          const p4 = photos.endLocation || noPhoto;
+          const types = info.trashTypes ? info.trashTypes.join(', ') : '선택안함';
+          const email = info.userEmail || '알 수 없음';
+
+          const cardHtml = `
+            <div class="review-info">
+              <strong>요청자:</strong> ${email}<br>
+              <strong>장소:</strong> ${info.location} | <strong>마대:</strong> ${info.sackCount}개<br>
+              <strong>주요 쓰레기:</strong> ${types}
+            </div>
+            <div class="review-photos">
+              <div class="photo-wrapper"><img src="${p1}"><span>시작(본인)</span></div>
+              <div class="photo-wrapper"><img src="${p2}"><span>시작(해변)</span></div>
+              <div class="photo-wrapper"><img src="${p3}"><span>종료(본인)</span></div>
+              <div class="photo-wrapper"><img src="${p4}"><span>종료(해변)</span></div>
+            </div>
+          `;
+
+          const card = document.createElement('div');
+          card.className = 'review-card';
+
           if (info.status === 'pending') {
             pendingCount++;
-            const photos = info.photos || {};
-            const p1 = photos.startSelfie || noPhoto;
-            const p2 = photos.startLocation || noPhoto;
-            const p3 = photos.endSelfie || noPhoto;
-            const p4 = photos.endLocation || noPhoto;
-
-            const card = document.createElement('div');
-            card.className = 'review-card';
-            card.innerHTML = `
-              <div class="review-info"><strong>장소:</strong> ${info.location} | <strong>마대:</strong> ${info.sackCount}개</div>
-              <div class="review-photos">
-                <div class="photo-wrapper"><img src="${p1}"><span>시작(본인)</span></div>
-                <div class="photo-wrapper"><img src="${p2}"><span>시작(해변)</span></div>
-                <div class="photo-wrapper"><img src="${p3}"><span>종료(본인)</span></div>
-                <div class="photo-wrapper"><img src="${p4}"><span>종료(해변)</span></div>
-              </div>
+            card.innerHTML = cardHtml + `
               <div class="review-actions">
                 <button class="success-btn" onclick="approveActivity('${id}', '${info.location}', '${p4}')">승인</button>
                 <button class="danger-btn" onclick="rejectActivity('${id}')">반려</button>
               </div>
             `;
             listContainer.appendChild(card);
+          } else {
+            historyCount++;
+            const statusText = info.status === 'approved' ? '<span style="color:#28a745;">✅ 승인됨</span>' : '<span style="color:#dc3545;">🚨 반려됨</span>';
+            card.innerHTML = cardHtml + `<div style="text-align:center; font-weight:bold; margin-top:10px;">${statusText}</div>`;
+            historyContainer.appendChild(card);
           }
         }
       }
-      emptyMsg.style.display = pendingCount === 0 ? 'block' : 'none';
+      document.getElementById('empty-msg').style.display = pendingCount === 0 ? 'block' : 'none';
+      document.getElementById('history-empty-msg').style.display = historyCount === 0 ? 'block' : 'none';
     });
 
-    function approveActivity(id, loc, photo) {
+    function approveActivity(id, loc, photoUrl) {
       if(confirm('승인하시겠습니까?')) {
         db.ref('pending_approvals/' + id).update({ status: 'approved' });
-        db.ref('locations/' + loc).update({ approvedUserPhoto: photo });
+        db.ref('locations/' + loc).update({ approvedUserPhoto: photoUrl });
       }
     }
+    
     function rejectActivity(id) {
       if(confirm('반려 처리하시겠습니까?')) {
         db.ref('pending_approvals/' + id).update({ status: 'rejected' });
