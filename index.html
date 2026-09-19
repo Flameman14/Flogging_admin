@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우도 해변 관리자 앱</title>
+  <style>
+    body { font-family: 'Pretendard', sans-serif; margin: 0; background-color: #f4f7f6; display: flex; justify-content: center; height: 100vh; }
+    #app-container { width: 100%; max-width: 400px; background: white; height: 100%; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .screen { display: none; flex-direction: column; height: 100%; overflow-y: auto; padding: 20px; box-sizing: border-box; }
+    .screen.active { display: flex; }
+    h2, h3 { color: #333; margin-top: 0; }
+    
+    .primary-btn { background: #007bff; color: white; border: none; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 10px; }
+    .success-btn { background: #28a745; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 48%; }
+    .danger-btn { background: #dc3545; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 48%; }
+    .outline-btn { background: white; color: #555; border: 1px solid #ccc; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 10px; }
+
+    .form-group { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+    .form-group p { margin: 0 0 10px 0; font-weight: bold; font-size: 14px; color: #333; }
+    .radio-label { display: block; font-size: 13px; margin-bottom: 8px; cursor: pointer; color: #555; }
+    .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; }
+    .checkbox-label { font-size: 13px; color: #555; display: flex; align-items: center; width: 45%; }
+    
+    select, input[type="file"] { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc; }
+
+    #result-badge { display: inline-block; padding: 5px 10px; border-radius: 12px; font-size: 14px; font-weight: bold; margin-top: 10px; color: white; }
+    .bg-good { background-color: #28a745; }
+    .bg-normal { background-color: #ffc107; color: #333 !important; }
+    .bg-danger { background-color: #dc3545; }
+
+    .review-card { background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #90caf9; }
+    .review-info { font-size: 13px; color: #444; line-height: 1.5; margin-bottom: 10px; }
+    .review-photos { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+    .photo-wrapper { width: 48%; text-align: center; }
+    .photo-wrapper img { width: 100%; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #ccc; background: #eee; }
+    .photo-wrapper span { font-size: 11px; color: #555; font-weight: bold; }
+    .review-actions { display: flex; justify-content: space-between; }
+    #empty-msg { text-align: center; color: #888; font-size: 14px; margin-top: 50px; }
+  </style>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+
+  <div id="app-container">
+    
+    <!-- 1. 메인 대시보드 -->
+    <div id="main-screen" class="screen active">
+      <h2>우도 지킴이 관리자 🌊</h2>
+      <p style="color: #666; font-size: 14px; margin-bottom: 30px;">오늘의 업무를 선택하세요.</p>
+      
+      <button class="primary-btn" onclick="showScreen('morning-check-screen')">🌅 아침 해변 상태 체크</button>
+      <button class="primary-btn" style="background: #17a2b8;" onclick="showScreen('verify-screen')">✅ 서포터즈 활동 공인하기</button>
+    </div>
+
+    <!-- 2. 아침 해변 상태 체크 화면 -->
+    <div id="morning-check-screen" class="screen">
+      <h2>아침 해변 상태 체크</h2>
+      
+      <select id="location-select">
+        <option value="검멀레해변">검멀레해변</option>
+        <option value="서빈백사">서빈백사</option>
+        <option value="하고수동해수욕장">하고수동해수욕장</option>
+      </select>
+
+      <div class="form-group">
+        <p>📸 해변 현장 사진 등록</p>
+        <input type="file" id="morning-photo" accept="image/*">
+        <!-- 압축용 캔버스 (숨김) -->
+        <canvas id="photo-canvas" style="display: none;"></canvas>
+      </div>
+
+      <div class="form-group">
+        <p>1. 쓰레기가 보이는 범위</p>
+        <label class="radio-label"><input type="radio" name="range" value="0" checked> 보이지 않음 (0점)</label>
+        <label class="radio-label"><input type="radio" name="range" value="1"> 일부 구간에서 보임 (1점)</label>
+        <label class="radio-label"><input type="radio" name="range" value="2"> 구간 전반에서 보임 (2점)</label>
+      </div>
+
+      <div class="form-group">
+        <p>2. 쓰레기 밀집 정도</p>
+        <label class="radio-label"><input type="radio" name="density" value="0" checked> 거의 없음 (0점)</label>
+        <label class="radio-label"><input type="radio" name="density" value="1"> 산발적으로 존재 (1점)</label>
+        <label class="radio-label"><input type="radio" name="density" value="2"> 한두 곳에 밀집 (2점)</label>
+        <label class="radio-label"><input type="radio" name="density" value="3"> 여러 곳에 밀집 (3점)</label>
+      </div>
+
+      <div class="form-group">
+        <p>3. 사진 밖 주변 쓰레기 여부</p>
+        <label class="radio-label"><input type="radio" name="outside" value="0" checked> 없음 (0점)</label>
+        <label class="radio-label"><input type="radio" name="outside" value="1"> 있음 (1점)</label>
+      </div>
+
+      <div class="form-group">
+        <p>4. 발견된 쓰레기 종류 (복수선택)</p>
+        <div class="checkbox-group">
+          <label class="checkbox-label"><input type="checkbox" value="플라스틱/비닐"> 플라스틱/비닐</label>
+          <label class="checkbox-label"><input type="checkbox" value="스티로폼/부표"> 스티로폼/부표</label>
+          <label class="checkbox-label"><input type="checkbox" value="폐어구/그물/밧줄"> 폐어구/그물/밧줄</label>
+          <label class="checkbox-label"><input type="checkbox" value="유리/캔"> 유리/캔</label>
+          <label class="checkbox-label"><input type="checkbox" value="목재/대형폐기물"> 목재/대형폐기물</label>
+          <label class="checkbox-label"><input type="checkbox" value="기타"> 기타</label>
+        </div>
+      </div>
+
+      <div class="form-group" style="background: #e3f2fd; text-align: center;">
+        <p>자동 산출 결과</p>
+        <h3 id="total-score" style="margin: 0; color: #1976d2;">0점</h3>
+        <span id="result-badge" class="bg-good">양호 지역</span>
+      </div>
+
+      <button class="primary-btn" id="submit-check-btn" onclick="submitMorningCheck()">점검 완료 및 앱에 반영</button>
+      <button class="outline-btn" onclick="showScreen('main-screen')">뒤로 가기</button>
+    </div>
+
+    <!-- 3. 서포터즈 활동 공인 화면 -->
+    <div id="verify-screen" class="screen">
+      <h2>서포터즈 활동 공인</h2>
+      <p style="font-size: 12px; color: #666; margin-bottom: 15px;">제출된 활동 내역을 검토하고 공인해주세요.</p>
+
+      <div id="review-list">
+        <!-- 파이어베이스 데이터가 여기에 실시간 렌더링됩니다 -->
+      </div>
+      <p id="empty-msg">현재 대기 중인 승인 요청이 없습니다.</p>
+
+      <button class="outline-btn" onclick="showScreen('main-screen')" style="margin-top: auto;">뒤로 가기</button>
+    </div>
+
+  </div>
+
+  <script>
+    // 1. 파이어베이스 설정 (사용자 앱과 똑같은 값으로 붙여넣기)
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "SENDER_ID",
+      appId: "APP_ID"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let currentPhotoBase64 = null;
+
+    function showScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+    }
+
+    // 아침 점검 점수 실시간 계산
+    const scoreRadios = document.querySelectorAll('#morning-check-screen input[type="radio"]');
+    scoreRadios.forEach(radio => {
+      radio.addEventListener('change', calculateScore);
+    });
+
+    function calculateScore() {
+      const range = parseInt(document.querySelector('input[name="range"]:checked').value);
+      const density = parseInt(document.querySelector('input[name="density"]:checked').value);
+      const outside = parseInt(document.querySelector('input[name="outside"]:checked').value);
+      
+      const total = range + density + outside;
+      document.getElementById('total-score').innerText = total + '점';
+
+      const badge = document.getElementById('result-badge');
+      if (total <= 1) {
+        badge.innerText = '양호 지역'; badge.className = 'bg-good';
+      } else if (total <= 3) {
+        badge.innerText = '수거 권장 지역'; badge.className = 'bg-normal';
+      } else {
+        badge.innerText = '집중 수거 필요 지역'; badge.className = 'bg-danger';
+      }
+      return total;
+    }
+
+    // 아침 점검 사진 압축
+    document.getElementById('morning-photo').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.getElementById('photo-canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = 400; 
+          canvas.height = (img.height / img.width) * 400;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
+        }
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // 아침 점검 제출 -> Firebase 'locations' 업데이트
+    function submitMorningCheck() {
+      if (!currentPhotoBase64) {
+        alert('해변 현장 사진을 먼저 등록해주세요.');
+        return;
+      }
+
+      const btn = document.getElementById('submit-check-btn');
+      btn.innerText = "업로드 중...";
+      btn.disabled = true;
+
+      const location = document.getElementById('location-select').value;
+      const score = calculateScore();
+
+      db.ref('locations/' + location).update({
+        score: score,
+        adminPhoto: currentPhotoBase64,
+        timestamp: Date.now()
+      }).then(() => {
+        alert("점검이 완료되어 사용자 앱 지도에 즉시 반영되었습니다.");
+        currentPhotoBase64 = null;
+        document.getElementById('morning-photo').value = "";
+        showScreen('main-screen');
+      }).catch(err => {
+        alert("오류 발생: " + err);
+      }).finally(() => {
+        btn.innerText = "점검 완료 및 앱에 반영";
+        btn.disabled = false;
+      });
+    }
+
+    // 서포터즈 활동 승인 대기 목록 실시간 렌더링
+    db.ref('pending_approvals').on('value', (snapshot) => {
+      const listContainer = document.getElementById('review-list');
+      const emptyMsg = document.getElementById('empty-msg');
+      listContainer.innerHTML = '';
+      
+      const data = snapshot.val();
+      let pendingCount = 0;
+
+      if(data) {
+        for (const [id, info] of Object.entries(data)) {
+          if (info.status === 'pending') {
+            pendingCount++;
+            
+            const card = document.createElement('div');
+            card.className = 'review-card';
+            card.innerHTML = `
+              <div class="review-info">
+                <strong>참여자:</strong> ${info.userEmail}<br>
+                <strong>장소:</strong> ${info.location}<br>
+                <strong>수거한 마대:</strong> <span style="color:#007bff; font-weight:bold;">${info.sackCount}개</span><br>
+                <strong>쓰레기 종류:</strong> ${info.trashTypes ? info.trashTypes.join(', ') : '없음'}
+              </div>
+              <div class="review-photos">
+                <div class="photo-wrapper"><img src="${info.photos.startSelfie}"><span>시작 (본인)</span></div>
+                <div class="photo-wrapper"><img src="${info.photos.startLocation}"><span>시작 (해변)</span></div>
+                <div class="photo-wrapper"><img src="${info.photos.endSelfie}"><span>종료 (마대)</span></div>
+                <div class="photo-wrapper"><img src="${info.photos.endLocation}"><span>종료 (해변)</span></div>
+              </div>
+              <div class="review-actions">
+                <button class="success-btn" onclick="approveActivity('${id}', '${info.location}', '${info.photos.endLocation}')">공인 승인</button>
+                <button class="danger-btn" onclick="rejectActivity('${id}')">반려 (삭감)</button>
+              </div>
+            `;
+            listContainer.appendChild(card);
+          }
+        }
+      }
+
+      emptyMsg.style.display = pendingCount === 0 ? 'block' : 'none';
+    });
+
+    // 승인 (사용자 앱 모달 최신 사진 변경)
+    function approveActivity(id, locationName, endLocationPhotoBase64) {
+      if(confirm('이 활동을 공인하시겠습니까?\n종료 해변 사진이 사용자 앱 현장 사진으로 업데이트됩니다.')) {
+        // 1. 해당 요청 상태 변경
+        db.ref('pending_approvals/' + id).update({ status: 'approved' });
+        // 2. location 노드에 최신 승인 사진 덮어쓰기
+        db.ref('locations/' + locationName).update({ approvedUserPhoto: endLocationPhotoBase64 });
+      }
+    }
+
+    // 반려 (사용자 횟수 및 활동비 삭감 유도)
+    function rejectActivity(id) {
+      if(confirm('사진 불량 등으로 이 활동을 반려하시겠습니까?\n참여자의 활동 횟수 및 누적 금액이 즉시 차감됩니다.')) {
+        db.ref('pending_approvals/' + id).update({ status: 'rejected' });
+      }
+    }
+  </script>
+</body>
+</html>
