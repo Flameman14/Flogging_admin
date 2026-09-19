@@ -122,8 +122,8 @@
   </div>
 
   <script>
-    /* 본인의 파이어베이스 Config 입력 (이전과 동일하게 유지) */
-    const firebaseConfig = {
+    /* 본인의 파이어베이스 Config 입력 */
+const firebaseConfig = {
   apiKey: "AIzaSyBir23HnIvMiP7GYXRAKqk0dWtt0hMSgD4",
   authDomain: "flogging-31ab2.firebaseapp.com",
   databaseURL: "https://flogging-31ab2-default-rtdb.firebaseio.com",
@@ -147,7 +147,6 @@
     }
 
     function adminLogin() {
-      // 데모용 단순 비밀번호 확인
       if(document.getElementById('admin-pw').value === '1234') { 
         showScreen('main-screen');
       } else {
@@ -203,7 +202,15 @@
         
         await db.ref('locations/' + loc).update({ score: score, adminPhoto: currentPhotoBase64 });
         alert("✅ 즉시 사용자 앱에 반영되었습니다.");
+        
+        // 폼 초기화
         currentPhotoBase64 = null;
+        document.getElementById('morning-photo').value = '';
+        document.querySelector('input[name="range"][value="0"]').checked = true;
+        document.querySelector('input[name="density"][value="0"]').checked = true;
+        document.querySelector('input[name="outside"][value="0"]').checked = true;
+        calculateScore(); // 0점으로 다시 UI 변경
+        
         btn.innerText = "점검 완료 및 앱에 반영"; btn.disabled = false;
         showScreen('main-screen');
       } catch(e) {
