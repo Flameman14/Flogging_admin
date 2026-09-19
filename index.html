@@ -36,7 +36,6 @@
   </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 </head>
 <body>
 
@@ -123,7 +122,7 @@
   </div>
 
   <script>
-    /* 본인의 파이어베이스 Config 입력 */
+    /* 본인의 파이어베이스 Config 입력 (이전과 동일하게 유지) */
     const firebaseConfig = {
   apiKey: "AIzaSyBir23HnIvMiP7GYXRAKqk0dWtt0hMSgD4",
   authDomain: "flogging-31ab2.firebaseapp.com",
@@ -138,7 +137,7 @@
     
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const storage = firebase.storage();
+    
     const noPhoto = "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect width='150' height='150' fill='%23eee'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='14' fill='%23555'%3E대기중%3C/text%3E%3C/svg%3E";
     let currentPhotoBase64 = null;
 
@@ -199,14 +198,10 @@
       btn.innerText = "업로드 중..."; btn.disabled = true;
 
       try {
-        const ref = storage.ref(`morning_checks/${Date.now()}.jpg`);
-        await ref.putString(currentPhotoBase64, 'data_url');
-        const photoUrl = await ref.getDownloadURL();
-
         const loc = document.getElementById('location-select').value;
         const score = calculateScore();
         
-        await db.ref('locations/' + loc).update({ score: score, adminPhoto: photoUrl });
+        await db.ref('locations/' + loc).update({ score: score, adminPhoto: currentPhotoBase64 });
         alert("✅ 즉시 사용자 앱에 반영되었습니다.");
         currentPhotoBase64 = null;
         btn.innerText = "점검 완료 및 앱에 반영"; btn.disabled = false;
